@@ -1,5 +1,6 @@
 .env
 node_modules
+
 .env.local
 .env.development.local
 .env.test.local
@@ -11,6 +12,9 @@ node_modules
 .env.development.local
 .env.test.local
 .env.production.local
+
+PADDLE_API_KEYS.txt
+
 
 pnpm-lock.yaml
 package-lock.json
@@ -24,3 +28,6 @@ package-lock.json.gz.part.5
 package-lock.json.gz.part.6
 package-lock.json.gz.part.7
 package-lock.json.gz.part.8
+
+dist
+.git
