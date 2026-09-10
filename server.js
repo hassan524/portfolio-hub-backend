@@ -22,6 +22,7 @@ app.use(cors({
 // Middleware to parse cookies and JSON bodies
 app.use(cookieParser());
 app.use(express.json({
+  limit: '10mb',
   verify: (req, res, buf) => {
     if (req.originalUrl.includes('/api/payment/webhook')) {
       req.rawBody = buf.toString('utf-8');
@@ -39,4 +40,5 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  
 });

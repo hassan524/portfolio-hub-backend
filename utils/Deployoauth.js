@@ -100,3 +100,15 @@ export function createFrontendRedirectUrl(status, platform, message) {
 
   return redirectUrl.toString();
 }
+
+export function slugifyProjectName(rawName) {
+  const slug = (rawName || 'portfolio')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9._-]+/g, '-')  
+    .replace(/-{2,}/g, '-')        
+    .replace(/^-+|-+$/g, '')       
+    .slice(0, 90);                 
+
+  return slug || 'portfolio';
+}

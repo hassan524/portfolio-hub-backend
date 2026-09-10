@@ -1,6 +1,8 @@
+import JSZip from 'jszip';
+
+const NETLIFY_API_BASE_URL = 'https://api.netlify.com/api/v1';
 const NETLIFY_AUTHORIZE_URL = 'https://app.netlify.com/authorize';
 const NETLIFY_TOKEN_URL = 'https://api.netlify.com/oauth/token';
-
 
 export function createNetlifyAuthorizationUrl(state) {
   const authorizationUrl = new URL(NETLIFY_AUTHORIZE_URL);
@@ -12,7 +14,6 @@ export function createNetlifyAuthorizationUrl(state) {
 
   return authorizationUrl.toString();
 }
-
 
 export async function exchangeNetlifyAuthorizationCode(code) {
   if (!code) {
@@ -36,6 +37,7 @@ export async function exchangeNetlifyAuthorizationCode(code) {
   const responseData = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    console.error('[netlify.service] token exchange failed, raw response:', JSON.stringify(responseData, null, 2));
     const errorMessage = responseData?.error_description || responseData?.error || 'Failed to exchange Netlify code';
     throw new Error(errorMessage);
   }
@@ -45,4 +47,50 @@ export async function exchangeNetlifyAuthorizationCode(code) {
   }
 
   return responseData.access_token;
+}
+
+export async function deployHtmlToNetlify(accessToken, siteName, htmlContent) {
+  const siteRes = await fetch(`${NETLIFY_API_BASE_URL}/sites`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name: siteName }),
+  });
+  const site = await siteRes.json().catch(() => ({}));
+  if (!siteRes.ok) {
+    console.error('[netlify.service] site creation failed:', JSON.stringify(site));
+    throw new Error(site?.message || 'Failed to create Netlify site');
+  }
+
+  const zip = new JSZip();
+  zip.file('index.html', htmlContent);
+  const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+  const deployRes = await fetch(`${NETLIFY_API_BASE_URL}/sites/${site.id}/deploys`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/zip',
+    },
+    body: zipBuffer,
+  });
+  const deploy = await deployRes.json().catch(() => ({}));
+  if (!deployRes.ok) {
+    console.error('[netlify.service] deploy failed:', JSON.stringify(deploy));
+    throw new Error(deploy?.message || 'Netlify deployment failed');
+  }
+
+  // siteId + deployId are both needed later for status polling
+  return { siteId: site.id, deployId: deploy.id, url: site.ssl_url || site.url };
+}
+
+export async function getNetlifyDeployStatus(accessToken, siteId, deployId) {
+  const response = await fetch(`${NETLIFY_API_BASE_URL}/sites/${siteId}/deploys/${deployId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.message || 'Failed to fetch deploy status');
+  return data.state; // new | uploading | uploaded | processing | ready | error
 }

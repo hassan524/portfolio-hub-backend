@@ -2,14 +2,15 @@ import { supabase } from '../config/db.js';
 
 async function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
+  const headerToken = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  const queryToken = req.query.token;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing or malformed Authorization header' });
+  const token = headerToken || queryToken;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Missing or malformed Authorization' });
   }
 
-  const token = authHeader.split(' ')[1];
-
-  // Supabase verifies the JWT token directly
   const { data, error } = await supabase.auth.getUser(token);
 
   if (error || !data?.user) {
