@@ -2,82 +2,93 @@ import { supabase } from "../config/db.js";
 
 const SUPPORTED_PLATFORMS = ['vercel', 'netlify'];
 
-export async function getUserDeployStatus(userId) {
-  const { data, error } = await supabase
-    .from('deploy_credentials')
-    .select('platform')
-    .eq('userid', userId);
+// Service for managing user deployment credentials and domain availability
+export class DeployService {
+  // Get connected deployment platforms (Vercel/Netlify) for a user
+  async getUserDeployStatus(userId) {
+    const { data, error } = await supabase
+      .from('deploy_credentials')
+      .select('platform')
+      .eq('userid', userId);
 
-  if (error) {
-    throw new Error(`Failed to fetch deploy status: ${error.message}`);
+    if (error) {
+      throw new Error(`Failed to fetch deploy status: ${error.message}`);
+    }
+
+    const connectedPlatforms = new Set((data || []).map((row) => row.platform));
+
+    return {
+      vercel: connectedPlatforms.has('vercel'),
+      netlify: connectedPlatforms.has('netlify'),
+    };
   }
 
-  const connectedPlatforms = new Set((data || []).map((row) => row.platform));
+  // Save or update user OAuth access token for a platform
+  async saveDeployCredential(userId, platform, accessToken, teamId = null) {
+    if (!SUPPORTED_PLATFORMS.includes(platform)) {
+      throw new Error(`Unsupported platform: ${platform}`);
+    }
+    if (!accessToken) {
+      throw new Error('Cannot save an empty access token');
+    }
 
-  return {
-    vercel: connectedPlatforms.has('vercel'),
-    netlify: connectedPlatforms.has('netlify'),
-  };
+    const { error } = await supabase
+      .from('deploy_credentials')
+      .upsert(
+        { userid: userId, platform, access_token: accessToken, team_id: teamId },
+        { onConflict: 'userid,platform' }
+      );
+
+    if (error) {
+      throw new Error(`Failed to save ${platform} credential: ${error.message}`);
+    }
+  }
+
+  // Get user credentials for a specific platform
+  async getUserDeployCredential(userId, platform) {
+    const { data, error } = await supabase
+      .from('deploy_credentials')
+      .select('access_token, team_id')
+      .eq('userid', userId)
+      .eq('platform', platform)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to fetch ${platform} credential: ${error.message}`);
+    }
+    return data ?? null;
+  }
+
+  // Check if a subdomain is available on Vercel
+  async checkVercelNameAvailable(userId, name) {
+    const res = await fetch(`https://${name}.vercel.app`, {
+      method: 'GET',
+      redirect: 'manual',
+    });
+
+    if (res.status === 404 && res.headers.get('x-vercel-error') === 'DEPLOYMENT_NOT_FOUND') {
+      return true;
+    }
+    return false;
+  }
+
+  // Check if a site name is available on Netlify
+  async checkNetlifyNameAvailable(userId, name) {
+    const credential = await this.getUserDeployCredential(userId, 'netlify');
+    if (!credential) {
+      throw new Error('Netlify not connected');
+    }
+
+    const res = await fetch(`https://api.netlify.com/api/v1/sites/${encodeURIComponent(name)}.netlify.app`, {
+      headers: { Authorization: `Bearer ${credential.access_token}` },
+    });
+
+    if (res.status === 404) return true;
+    if (res.status === 200) return false;
+
+    throw new Error(`Netlify name check failed with status ${res.status}`);
+  }
 }
 
-export async function saveDeployCredential(userId, platform, accessToken, teamId = null) {
-  if (!SUPPORTED_PLATFORMS.includes(platform)) {
-    throw new Error(`Unsupported platform: ${platform}`);
-  }
-  if (!accessToken) {
-    throw new Error('Cannot save an empty access token');
-  }
-
-  const { error } = await supabase
-    .from('deploy_credentials')
-    .upsert(
-      { userid: userId, platform, access_token: accessToken, team_id: teamId },
-      { onConflict: 'userid,platform' }
-    );
-
-  if (error) {
-    throw new Error(`Failed to save ${platform} credential: ${error.message}`);
-  }
-}
-
-export async function getUserDeployCredential(userId, platform) {
-  const { data, error } = await supabase
-    .from('deploy_credentials')
-    .select('access_token, team_id')
-    .eq('userid', userId)
-    .eq('platform', platform)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to fetch ${platform} credential: ${error.message}`);
-  }
-  return data ?? null; 
-}
-
-export async function checkVercelNameAvailable(userId, name) {
-  const res = await fetch(`https://${name}.vercel.app`, {
-    method: 'GET',
-    redirect: 'manual',
-  });
-
-  if (res.status === 404 && res.headers.get('x-vercel-error') === 'DEPLOYMENT_NOT_FOUND') {
-    return true;
-  }
-  return false;
-}
-
-export async function checkNetlifyNameAvailable(userId, name) {
-  const credential = await getUserDeployCredential(userId, 'netlify');
-  if (!credential) {
-    throw new Error('Netlify not connected');
-  }
-
-  const res = await fetch(`https://api.netlify.com/api/v1/sites/${encodeURIComponent(name)}.netlify.app`, {
-    headers: { Authorization: `Bearer ${credential.access_token}` },
-  });
-
-  if (res.status === 404) return true;
-  if (res.status === 200) return false;
-
-  throw new Error(`Netlify name check failed with status ${res.status}`);
-}
+export const deployService = new DeployService();
+export default deployService;

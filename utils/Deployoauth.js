@@ -1,6 +1,7 @@
 import crypto from 'crypto';
+import { slugifyProjectName } from './string.util.js';
 
-const STATE_TOKEN_TTL_MS = 10 * 60 * 1000; 
+const STATE_TOKEN_TTL_MS = 10 * 60 * 1000;
 
 export const DEPLOY_STATE_COOKIE_NAME = 'deploy_oauth_state';
 
@@ -12,7 +13,13 @@ function getStateSecret() {
   return secret;
 }
 
-
+/**
+ * Creates a signed OAuth state token containing user ID and target platform.
+ *
+ * @param {string} userId - Authenticated Supabase user ID.
+ * @param {'vercel'|'netlify'} platform - Target deployment platform.
+ * @returns {string} Signed base64 state token.
+ */
 export function createOAuthStateToken(userId, platform) {
   const payload = {
     userId,
@@ -30,7 +37,13 @@ export function createOAuthStateToken(userId, platform) {
   return `${payloadBase64}.${signature}`;
 }
 
-
+/**
+ * Verifies a signed OAuth state token and checks TTL and platform match.
+ *
+ * @param {string} token - Received state token.
+ * @param {'vercel'|'netlify'} expectedPlatform - Expected target platform.
+ * @returns {Object|null} Payload if valid, null otherwise.
+ */
 export function verifyOAuthStateToken(token, expectedPlatform) {
   if (!token || !token.includes('.')) {
     return null;
@@ -68,7 +81,10 @@ export function verifyOAuthStateToken(token, expectedPlatform) {
   return payload;
 }
 
-
+/**
+ * Returns cookie options for setting the state cookie.
+ * @returns {import('express').CookieOptions} Cookie options object.
+ */
 export function createStateCookieOptions() {
   return {
     httpOnly: true,
@@ -79,6 +95,9 @@ export function createStateCookieOptions() {
   };
 }
 
+/**
+ * Creates popup redirect URL for OAuth flow completion.
+ */
 export function createPopupCompleteUrl(status, platform, message) {
   const frontendBaseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const url = new URL('/oauth-complete', frontendBaseUrl);
@@ -88,12 +107,15 @@ export function createPopupCompleteUrl(status, platform, message) {
   return url.toString();
 }
 
+/**
+ * Creates frontend dashboard redirect URL.
+ */
 export function createFrontendRedirectUrl(status, platform, message) {
   const frontendBaseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const redirectUrl = new URL('/dashboard', frontendBaseUrl);
 
-  redirectUrl.searchParams.set('deploy_status', status); // 'success' | 'error'
-  redirectUrl.searchParams.set('platform', platform); // 'vercel' | 'netlify'
+  redirectUrl.searchParams.set('deploy_status', status);
+  redirectUrl.searchParams.set('platform', platform);
   if (message) {
     redirectUrl.searchParams.set('message', message);
   }
@@ -101,14 +123,4 @@ export function createFrontendRedirectUrl(status, platform, message) {
   return redirectUrl.toString();
 }
 
-export function slugifyProjectName(rawName) {
-  const slug = (rawName || 'portfolio')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9._-]+/g, '-')  
-    .replace(/-{2,}/g, '-')        
-    .replace(/^-+|-+$/g, '')       
-    .slice(0, 90);                 
-
-  return slug || 'portfolio';
-}
+export { slugifyProjectName };

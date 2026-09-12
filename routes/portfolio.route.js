@@ -1,16 +1,20 @@
 import express from "express";
 import requireAuth from "../middlewares/auth.js";
-import { createPortfolio, listPortfolios, trackPortfolioView, getPortfolioViews30d, getPortfolioTraffic, getPortfolioViewsTotal, getPortfolioDetail } from "../controllers/portfolio.controller.js";
+import portfolioController from "../controllers/portfolio.controller.js";
 
 const router = express.Router();
 
-router.post('/create', requireAuth, createPortfolio);
-router.get('/list', requireAuth, listPortfolios);
-router.get('/:portfolioId', requireAuth, getPortfolioDetail);
-router.post('/track/:portfolioId', trackPortfolioView);
-router.get('/:portfolioId/traffic', requireAuth, getPortfolioTraffic);
-router.get('/:portfolioId/views-30d', requireAuth, getPortfolioViews30d);
-router.get('/:portfolioId/views-total', requireAuth, getPortfolioViewsTotal);
+router.post('/create', requireAuth, portfolioController.createPortfolio);
+router.get('/list', requireAuth, portfolioController.listPortfolios);
+router.get('/:portfolioId', requireAuth, portfolioController.getPortfolioDetail);
+router.post('/track/:portfolioId', portfolioController.trackPortfolioView);
 
+router.get('/:portfolioId/viewsRange', requireAuth, portfolioController.getPortfolioRangeViews);
+
+router.get('/:portfolioId/views-30d', requireAuth, portfolioController.getPortfolioViews30d);
+router.get('/:portfolioId/views-total', requireAuth, portfolioController.getPortfolioViewsTotal);
+
+router.get('/:portfolioId/overview', requireAuth, portfolioController.getPortfolioOverviewData);
+router.get('/:portfolioId/traffic', requireAuth, portfolioController.getPortfolioTrafficData);
 
 export default router;

@@ -1,12 +1,10 @@
 import express from "express";
 import requireAuth from "../middlewares/auth.js";
-import { createPaymentTransaction, handlePaddleWebhook } from "../controllers/payment.controller.js";
+import paymentController from "../controllers/payment.controller.js";
 
 const router = express.Router();
 
-router.post('/create', requireAuth, createPaymentTransaction);
-
-// Inject express.raw directly here to guarantee an untouched Buffer
-router.post('/webhook', handlePaddleWebhook);
+router.post('/create', requireAuth, paymentController.createPaymentTransaction);
+router.post('/webhook', paymentController.handlePaddleWebhook);
 
 export default router;

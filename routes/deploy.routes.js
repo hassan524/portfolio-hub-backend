@@ -1,41 +1,25 @@
 import express from 'express';
 import requireAuth from '../middlewares/auth.js';
-import {
-  getDeployStatus,
-  authorizeVercel,
-  authorizeNetlify,
-  vercelCallback,
-  netlifyCallback,
-  deployToVercel,
-  streamVercelDeployStatus,
-  deployToNetlify,
-  streamNetlifyDeployStatus,
-  checkNameAvailability
-} from '../controllers/deploy.controller.js';
-import { getUserDeployCredential } from '../services/deploy.service.js';
+import deployController from '../controllers/deploy.controller.js';
 
 const router = express.Router();
 
-router.get('/status', requireAuth, getDeployStatus);
+router.get('/status', requireAuth, deployController.getDeployStatus);
 
-router.get('/debug-credential', requireAuth, async (req, res) => {
-  const credential = await getUserDeployCredential(req.user.id, 'vercel');
-  console.log('vercel credential:', credential);
-  res.json(credential);
-});
+router.get('/debug-credential', requireAuth, deployController.debugCredential);
 
-router.get('/vercel/authorize', requireAuth, authorizeVercel);
-router.get('/netlify/authorize', requireAuth, authorizeNetlify);
+router.get('/vercel/authorize', requireAuth, deployController.authorizeVercel);
+router.get('/netlify/authorize', requireAuth, deployController.authorizeNetlify);
 
-router.get('/vercel/callback', vercelCallback);
-router.get('/netlify/callback', netlifyCallback);
+router.get('/vercel/callback', deployController.vercelCallback);
+router.get('/netlify/callback', deployController.netlifyCallback);
 
-router.get("/:platform/check-name", requireAuth, checkNameAvailability);
+router.get("/:platform/check-name", requireAuth, deployController.checkNameAvailability);
 
-router.post('/vercel/deploy', requireAuth, deployToVercel);
-router.get('/vercel/deploy/:deploymentId/stream', requireAuth, streamVercelDeployStatus);
+router.post('/vercel/deploy', requireAuth, deployController.deployToVercel);
+router.get('/vercel/deploy/:deploymentId/stream', requireAuth, deployController.streamVercelDeployStatus);
 
-router.post('/netlify/deploy', requireAuth, deployToNetlify);
-router.get('/netlify/deploy/:siteId/:deployId/stream', requireAuth, streamNetlifyDeployStatus);
+router.post('/netlify/deploy', requireAuth, deployController.deployToNetlify);
+router.get('/netlify/deploy/:siteId/:deployId/stream', requireAuth, deployController.streamNetlifyDeployStatus);
 
 export default router;
