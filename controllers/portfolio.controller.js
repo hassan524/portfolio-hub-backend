@@ -18,13 +18,13 @@ export class PortfolioController {
   // POST /api/portfolio/create
   async createPortfolio(req, res) {
     try {
-      const { name, description, templateId, siteData, saveMode } = req.body;
+      const { finalWebsiteName, name, description, templateId, siteData, saveMode } = req.body;
       const userId = req.user.id;
 
       const portfolio = await portfolioService.createPortfolio({
         userId,
         saveMode,
-        name,
+        name: finalWebsiteName || name,
         description,
         templateId,
         siteData,

@@ -1,6 +1,6 @@
 // src/server.js
 import dotenv from "dotenv";
-dotenv.config(); 
+dotenv.config();
 
 import express from "express";
 import cors from "cors";
@@ -22,7 +22,7 @@ app.use(cors({
 // Middleware to parse cookies and JSON bodies
 app.use(cookieParser());
 app.use(express.json({
-  limit: '10mb',
+  limit: '20mb',
   verify: (req, res, buf) => {
     if (req.originalUrl.includes('/api/payment/webhook')) {
       req.rawBody = buf.toString('utf-8');
@@ -34,11 +34,11 @@ app.use(express.json({
 
 app.use("/api/payment", paymentRoutes);
 app.use("/api/portfolio", portfolioRoutes);
-app.use("/api/deploy", deployRoutes);
+app.use("/api/deploy", express.json({ limit: "50mb" }), deployRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  
+
 });

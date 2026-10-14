@@ -7,6 +7,14 @@ const VERCEL_API_BASE_URL = 'https://api.vercel.com';
 export class VercelService {
   // Create Vercel OAuth authorization URL
   createVercelAuthorizationUrl(state) {
+    if (process.env.VERCEL_CLIENT_ID && process.env.VERCEL_REDIRECT_URI) {
+      const authorizationUrl = new URL('https://vercel.com/oauth/authorize');
+      authorizationUrl.searchParams.set('client_id', process.env.VERCEL_CLIENT_ID);
+      authorizationUrl.searchParams.set('redirect_uri', process.env.VERCEL_REDIRECT_URI);
+      authorizationUrl.searchParams.set('state', state);
+      return authorizationUrl.toString();
+    }
+
     const integrationSlug = process.env.VERCEL_INTEGRATION_SLUG;
     if (!integrationSlug) {
       throw new Error('VERCEL_INTEGRATION_SLUG is not configured');
@@ -67,7 +75,11 @@ export class VercelService {
 
       if (readyState === "READY") return readyState;
       if (readyState === "ERROR" || readyState === "CANCELED") {
-        throw new Error(`Vercel deployment ended with state: ${readyState}`);
+        const details = await this.getVercelDeploymentErrorDetails(accessToken, deploymentId, teamId).catch(
+          (e) => `(failed to fetch build logs: ${e.message})`
+        );
+        console.error("[vercel.service] build error details:\n", details);
+        throw new Error(`Vercel deployment ended with state: ${readyState} — ${details.slice(0, 300)}`);
       }
 
       await sleep(intervalMs);
@@ -78,11 +90,21 @@ export class VercelService {
 
   // Deploy React/Vite project files to Vercel and update portfolio record
   async deployReactProjectToVercel(accessToken, projectName, fileMap, teamId, portfolioId) {
-    const files = Object.entries(fileMap).map(([path, content]) => ({
-      file: path,
-      data: Buffer.from(content, "utf-8").toString("base64"),
-      encoding: "base64",
-    }));
+    const files = Object.entries(fileMap).map(([path, content]) => {
+      let data;
+      if (typeof content === "string" && content.startsWith("base64:")) {
+        data = content.slice(7);
+      } else if (typeof content === "string" && content.startsWith("data:") && content.includes(";base64,")) {
+        data = content.split(";base64,")[1];
+      } else {
+        data = Buffer.from(content, "utf-8").toString("base64");
+      }
+      return {
+        file: path,
+        data,
+        encoding: "base64",
+      };
+    });
 
     const url = new URL(`${VERCEL_API_BASE_URL}/v13/deployments`);
     if (teamId) {
@@ -189,6 +211,25 @@ export class VercelService {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data?.error?.message || 'Failed to fetch deployment status');
     return data.readyState;
+  }
+
+  async getVercelDeploymentErrorDetails(accessToken, deploymentId, teamId) {
+    const url = new URL(`${VERCEL_API_BASE_URL}/v3/deployments/${deploymentId}/events`);
+    if (teamId) url.searchParams.set('teamId', teamId);
+    url.searchParams.set('builds', '1');
+
+    const response = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    const events = await response.json().catch(() => []);
+
+    const errorLines = (Array.isArray(events) ? events : [])
+      .filter((e) => e.type === 'stderr' || /error/i.test(e.text || ''))
+      .map((e) => e.text || e.payload?.text)
+      .filter(Boolean);
+
+    return errorLines.length ? errorLines.join('\n') : JSON.stringify(events).slice(0, 2000);
   }
 
   // Get recent deployment history for a project

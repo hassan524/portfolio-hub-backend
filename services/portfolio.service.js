@@ -200,11 +200,14 @@ export class PortfolioService {
       deployments = await vercelService.getVercelDeploymentHistory(credential.access_token, projectName, null, 10);
     }
 
+    const totalviews = await this.getPortfolioTotalViews(portfolioId);
+
     return {
       ...portfolio,
       platform: credential.platform,
       avgResponseMs,
       deployments,
+      totalviews
     };
   }
 

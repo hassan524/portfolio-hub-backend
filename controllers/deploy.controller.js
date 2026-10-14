@@ -93,7 +93,7 @@ export class DeployController {
         return res.redirect(createPopupCompleteUrl('error', 'vercel', 'missing_code'));
       }
 
-      const stateToken = req.cookies?.[DEPLOY_STATE_COOKIE_NAME];
+      const stateToken = req.cookies?.[DEPLOY_STATE_COOKIE_NAME] || req.query?.state;
       const statePayload = verifyOAuthStateToken(stateToken, 'vercel');
       res.clearCookie(DEPLOY_STATE_COOKIE_NAME, { path: '/api/deploy' });
 
@@ -124,7 +124,7 @@ export class DeployController {
         return res.redirect(createPopupCompleteUrl('error', 'netlify', 'missing_code'));
       }
 
-      const stateToken = req.cookies?.[DEPLOY_STATE_COOKIE_NAME];
+      const stateToken = req.cookies?.[DEPLOY_STATE_COOKIE_NAME] || req.query?.state;
       const statePayload = verifyOAuthStateToken(stateToken, 'netlify');
       res.clearCookie(DEPLOY_STATE_COOKIE_NAME, { path: '/api/deploy' });
 
