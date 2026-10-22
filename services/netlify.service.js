@@ -53,8 +53,7 @@ export class NetlifyService {
     return responseData.access_token;
   }
 
-  // Create Netlify site, zip HTML, and deploy
-  async deployHtmlToNetlify(accessToken, siteName, htmlContent) {
+  async deployHtmlToNetlify(accessToken, siteName, htmlContent, files = null) {
     const siteRes = await fetch(`${NETLIFY_API_BASE_URL}/sites`, {
       method: 'POST',
       headers: {
@@ -70,7 +69,19 @@ export class NetlifyService {
     }
 
     const zip = new JSZip();
-    zip.file('index.html', htmlContent);
+    if (files && typeof files === 'object' && Object.keys(files).length > 0) {
+      for (const [filePath, content] of Object.entries(files)) {
+        if (typeof content === "string" && content.startsWith("data:") && content.includes(";base64,")) {
+          zip.file(filePath, Buffer.from(content.split(";base64,")[1], "base64"));
+        } else if (typeof content === "string" && content.startsWith("base64:")) {
+          zip.file(filePath, Buffer.from(content.slice(7), "base64"));
+        } else {
+          zip.file(filePath, content);
+        }
+      }
+    } else {
+      zip.file('index.html', htmlContent || '');
+    }
     const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
 
     const deployRes = await fetch(`${NETLIFY_API_BASE_URL}/sites/${site.id}/deploys`, {

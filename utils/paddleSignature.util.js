@@ -30,5 +30,14 @@ export function verifyPaddleSignature(rawBody, signature, secret) {
     .update(signedPayload)
     .digest('hex');
 
-  return receivedHash === computedHash;
+  try {
+    const receivedBuf = Buffer.from(receivedHash, 'hex');
+    const computedBuf = Buffer.from(computedHash, 'hex');
+    if (receivedBuf.length !== computedBuf.length) {
+      return false;
+    }
+    return crypto.timingSafeEqual(receivedBuf, computedBuf);
+  } catch {
+    return false;
+  }
 }

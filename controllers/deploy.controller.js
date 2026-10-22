@@ -1,6 +1,7 @@
 import deployService from '../services/deploy.service.js';
 import vercelService from '../services/vercel.service.js';
 import netlifyService from '../services/netlify.service.js';
+import { supabase } from '../config/db.js';
 import {
   DEPLOY_STATE_COOKIE_NAME,
   createOAuthStateToken,
@@ -211,8 +212,11 @@ export class DeployController {
   // POST /api/deploy/netlify/deploy
   async deployToNetlify(req, res) {
     try {
-      const { html, projectName } = req.body;
-      if (!html) return res.status(400).json({ error: 'Missing html content' });
+      const { html, files, projectName, PortfolioID, portfolioId } = req.body;
+      const htmlContent = html || files?.['index.html'] || files?.['public/index.html'] || '';
+      if (!htmlContent && (!files || Object.keys(files).length === 0)) {
+        return res.status(400).json({ error: 'Missing html or files content' });
+      }
 
       const credential = await deployService.getUserDeployCredential(req.user.id, 'netlify');
       if (!credential) return res.status(400).json({ error: 'Netlify not connected' });
@@ -220,8 +224,28 @@ export class DeployController {
       const result = await netlifyService.deployHtmlToNetlify(
         credential.access_token,
         projectName || `portfolio-${req.user.id.slice(0, 8)}`,
-        html,
+        htmlContent,
+        files,
       );
+
+      const targetPortfolioId = PortfolioID || portfolioId;
+      if (targetPortfolioId && result?.url) {
+        try {
+          await supabase
+            .from('portfolios')
+            .update({
+              isdeployed: true,
+              isdraft: false,
+              liveurl: result.url,
+              updated_at: new Date().toISOString(),
+              hosting: 'netlify',
+            })
+            .eq('id', targetPortfolioId);
+        } catch (dbErr) {
+          console.error('[deploy.controller] Failed to update portfolio status after Netlify deploy:', dbErr);
+        }
+      }
+
       res.status(200).json(result);
     } catch (err) {
       console.error('[deploy.controller] netlify deploy failed:', err);

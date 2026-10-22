@@ -17,4 +17,8 @@ router.get('/:portfolioId/views-total', requireAuth, portfolioController.getPort
 router.get('/:portfolioId/overview', requireAuth, portfolioController.getPortfolioOverviewData);
 router.get('/:portfolioId/traffic', requireAuth, portfolioController.getPortfolioTrafficData);
 
+router.put('/:portfolioId/site-data', requireAuth, portfolioController.updatePortfolioSiteData);
+router.put('/:portfolioId', requireAuth, portfolioController.updatePortfolioSiteData);
+router.post('/:portfolioId/redeploy', requireAuth, portfolioController.redeployPortfolio);
+
 export default router;

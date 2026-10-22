@@ -269,6 +269,29 @@ export class VercelService {
       createdAt: d.created ? new Date(d.created).toISOString() : null,
     }));
   }
+
+  async callVercel(token, path, method = "GET", body = null) {
+    const options = {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    };
+    if (body) options.body = JSON.stringify(body);
+
+    const response = await fetch(`${VERCEL_API_BASE_URL}${path}`, options);
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const isAuthError = response.status === 401 || response.status === 403;
+      const err = new Error(isAuthError ? "Vercel rejected the connection. Please reconnect Vercel." : (data?.error?.message || "Vercel request failed"));
+      err.status = isAuthError ? 424 : (response.status === 404 ? 404 : 400);
+      throw err;
+    }
+
+    return data;
+  }
 }
 
 export const vercelService = new VercelService();

@@ -18,9 +18,9 @@ PADDLE_API_KEYS.txt
 
 pnpm-lock.yaml
 package-lock.json
-package-lock.json.gz
-package-lock.json.gz.part
-package-lock.json.gz.part.1
+yarn.lock
+.pnp*
+.yarn
 package-lock.json.gz.part.2
 package-lock.json.gz.part.3
 package-lock.json.gz.part.4

@@ -17,6 +17,10 @@ router.get('/netlify/callback', deployController.netlifyCallback);
 router.get("/:platform/check-name", requireAuth, deployController.checkNameAvailability);
 
 router.post('/vercel/deploy', requireAuth, deployController.deployToVercel);
+router.post('/vercel/redeploy', requireAuth, (req, res, next) => {
+  req.params.portfolioId = req.body.portfolioId || req.body.PortfolioID;
+  return deployController.deployToVercel(req, res, next);
+});
 router.get('/vercel/deploy/:deploymentId/stream', requireAuth, deployController.streamVercelDeployStatus);
 
 router.post('/netlify/deploy', requireAuth, deployController.deployToNetlify);

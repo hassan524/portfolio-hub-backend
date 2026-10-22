@@ -42,9 +42,13 @@ export function toRanked(counts, total, limit) {
   return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
-    .map(([label, count]) => ({
-      label,
-      count,
-      percentage: total ? Math.round((count / total) * 100) : 0,
-    }));
+    .map(([label, count]) => {
+      const share = total ? Math.round((count / total) * 100) : 0;
+      return {
+        label,
+        count,
+        share,
+        percentage: share,
+      };
+    });
 }
