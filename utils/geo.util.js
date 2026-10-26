@@ -1,10 +1,5 @@
 let geoip = null;
-try {
-  // Dynamically import geoip-lite if available in dependencies
-  geoip = (await import('geoip-lite')).default;
-} catch {
-  // geoip-lite optional fallback if not installed
-}
+import('geoip-lite').then((m) => { geoip = m.default; }).catch(() => {});
 
 /**
  * Extracts the user's client IP address from an Express request object.

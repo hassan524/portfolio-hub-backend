@@ -15,6 +15,7 @@ export class PortfolioController {
     this.getPortfolioTrafficData = this.getPortfolioTrafficData.bind(this);
     this.updatePortfolioSiteData = this.updatePortfolioSiteData.bind(this);
     this.redeployPortfolio = this.redeployPortfolio.bind(this);
+    this.deletePortfolio = this.deletePortfolio.bind(this);
   }
 
   // POST /api/portfolio/create
@@ -232,6 +233,30 @@ export class PortfolioController {
       return res.status(status).json({
         success: false,
         message: error.message || "Failed to redeploy portfolio",
+        error: error.message,
+      });
+    }
+  }
+
+  // DELETE /api/portfolio/:portfolioId
+  async deletePortfolio(req, res) {
+    try {
+      const { portfolioId } = req.params;
+      const userId = req.user.id;
+
+      const result = await portfolioService.deletePortfolio(portfolioId, userId);
+
+      return res.status(200).json({
+        success: true,
+        message: "Project deleted successfully",
+        ...result,
+      });
+    } catch (error) {
+      console.error("Delete portfolio error:", error);
+      const status = error.status || 500;
+      return res.status(status).json({
+        success: false,
+        message: error.message || "Failed to delete project",
         error: error.message,
       });
     }

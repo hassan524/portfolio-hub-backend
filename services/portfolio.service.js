@@ -513,6 +513,61 @@ export class PortfolioService {
       return result;
     }
   }
+
+  // Delete a portfolio and clean up associated records
+  async deletePortfolio(portfolioId, userId) {
+    const portfolio = await this.getPortfolioById(portfolioId, userId);
+    if (!portfolio) {
+      const err = new Error("Portfolio not found or unauthorized");
+      err.status = 404;
+      throw err;
+    }
+
+    // 1. Delete associated views (if table exists)
+    try {
+      await supabase.from("portfolio_views").delete().eq("portfolio_id", portfolioId);
+    } catch {
+      // ignore
+    }
+
+    // 2. Delete associated SEO record (if not already handled by cascade)
+    try {
+      await supabase.from("portfolio_seo").delete().eq("portfolio_id", portfolioId);
+    } catch {
+      // ignore
+    }
+
+    // 3. Delete portfolio
+    const { error } = await supabase
+      .from("portfolios")
+      .delete()
+      .eq("id", portfolioId)
+      .eq("userid", userId);
+
+    if (error) throw error;
+
+    // 4. Update profile counters
+    try {
+      const { data: remaining } = await supabase
+        .from("portfolios")
+        .select("id, isdeployed, isdraft")
+        .eq("userid", userId);
+
+      const created = remaining?.length || 0;
+      const published = remaining?.filter((p) => p.isdeployed)?.length || 0;
+      const draft = remaining?.filter((p) => p.isdraft)?.length || 0;
+
+      await supabase.from("profiles").update({
+        created_portfolios: created,
+        published_portfolios: published,
+        draft_portfolios: draft,
+      }).eq("id", userId);
+    } catch (e) {
+      console.warn("[deletePortfolio] Failed to update profile counters:", e.message);
+    }
+
+    return { success: true, message: "Project deleted successfully" };
+  }
 }
 
 export const portfolioService = new PortfolioService();

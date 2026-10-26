@@ -20,5 +20,6 @@ router.get('/:portfolioId/traffic', requireAuth, portfolioController.getPortfoli
 router.put('/:portfolioId/site-data', requireAuth, portfolioController.updatePortfolioSiteData);
 router.put('/:portfolioId', requireAuth, portfolioController.updatePortfolioSiteData);
 router.post('/:portfolioId/redeploy', requireAuth, portfolioController.redeployPortfolio);
+router.delete('/:portfolioId', requireAuth, portfolioController.deletePortfolio);
 
 export default router;

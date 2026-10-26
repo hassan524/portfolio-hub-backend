@@ -19,6 +19,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "geoip-lite": "^2.0.3",
+    "googleapis": "^187.0.0",
     "jszip": "^3.10.1",
     "node-fetch": "^3.3.2",
     "zod": "^4.4.3"

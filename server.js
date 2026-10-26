@@ -1,4 +1,9 @@
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, "./.env") });
 dotenv.config();
 
 import express from "express";
@@ -8,6 +13,8 @@ import paymentRoutes from "./routes/payment.routes.js";
 import portfolioRoutes from "./routes/portfolio.route.js";
 import deployRoutes from "./routes/deploy.routes.js";
 import domainRoutes from "./routes/domain.routes.js";
+import seoRoutes from "./routes/seo.routes.js";
+import { startSeoBackgroundWorker } from "./services/seoBackgroundWorker.service.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -79,8 +86,11 @@ app.get("/health", (req, res) => res.status(200).json({ status: "ok", timestamp:
 // API routes
 app.use("/api/payment", paymentRoutes);
 app.use("/api/portfolio", portfolioRoutes);
+app.use("/api/portfolios", portfolioRoutes);
 app.use("/api/deploy", deployRoutes);
 app.use("/api/portfolio", domainRoutes);
+app.use("/api/portfolio", seoRoutes);
+app.use("/api/seo", seoRoutes);
 
 // 404 Route Handler
 app.use((req, res) => {
@@ -106,4 +116,5 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`PortfolioHub Backend running on http://localhost:${PORT}`);
+  startSeoBackgroundWorker();
 });
